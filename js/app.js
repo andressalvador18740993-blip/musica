@@ -4,6 +4,7 @@ const pb = new PocketBase(PB_URL);
 let currentSongsList = [];
 let currentIndex = 0;
 let isRegistering = false;
+let isShuffleActive = false; // Estado del modo aleatorio
 const CACHE_NAME = "salvamusic-offline-v5";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -110,9 +111,6 @@ function renderSongsList(songs) {
     let htmlContent = `
         <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-zinc-400">${songs.length} canciones</span>
-            <button onclick="playShuffle()" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
-                <i class="fa-solid fa-shuffle"></i> Aleatorio
-            </button>
         </div>
     `;
 
@@ -149,6 +147,22 @@ function renderSongsList(songs) {
     songsListContainer.innerHTML = htmlContent;
 }
 
+// Activar / Desactivar Reproducción Aleatoria (Toggle)
+function toggleShuffle() {
+    isShuffleActive = !isShuffleActive;
+    const shuffleBtn = document.getElementById("shuffle-btn");
+    
+    if (isShuffleActive) {
+        shuffleBtn.classList.remove("text-zinc-400");
+        shuffleBtn.classList.add("text-emerald-400", "scale-110");
+        alert("Modo aleatorio activado");
+    } else {
+        shuffleBtn.classList.remove("text-emerald-400", "scale-110");
+        shuffleBtn.classList.add("text-zinc-400");
+        alert("Modo aleatorio desactivado");
+    }
+}
+
 async function deleteSong(songId, songTitle) {
     if (!confirm(`¿Estás seguro de que deseas eliminar "${songTitle}" de tu biblioteca?`)) {
         return;
@@ -162,12 +176,6 @@ async function deleteSong(songId, songTitle) {
         console.error("Error al eliminar la canción:", error);
         alert("No se pudo eliminar la canción. Inténtalo de nuevo.");
     }
-}
-
-function playShuffle() {
-    if (currentSongsList.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * currentSongsList.length);
-    playSongByIndex(randomIndex);
 }
 
 async function toggleDownloadOffline(url, title) {
@@ -275,7 +283,15 @@ function togglePlay() {
 
 function nextSong() {
     if (currentSongsList.length === 0) return;
-    currentIndex = (currentIndex + 1) % currentSongsList.length;
+    
+    if (isShuffleActive) {
+        // Si el modo aleatorio está activo, elige un índice completamente al azar
+        currentIndex = Math.floor(Math.random() * currentSongsList.length);
+    } else {
+        // Si está apagado, sigue el orden normal secuencial
+        currentIndex = (currentIndex + 1) % currentSongsList.length;
+    }
+    
     playSongByIndex(currentIndex);
 }
 
