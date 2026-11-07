@@ -1,136 +1,183 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music PWA - Tu Música en la Nube</title>
-    <!-- Tailwind CSS por CDN -->
+    <title>Salva Music</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SDK de PocketBase -->
-    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="manifest" href="manifest.json">
+    <!-- PocketBase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <link rel="manifest" href="/manifest.json">
 </head>
-<body class="bg-zinc-950 text-zinc-100 font-sans pb-28">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans select-none pb-28">
 
-    <!-- SECCIÓN DE AUTENTICACIÓN (Se oculta si hay sesión activa) -->
-    <div id="auth-container" class="max-w-md mx-auto mt-20 p-6 bg-zinc-900 rounded-2xl shadow-xl border border-zinc-800">
-        <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-emerald-400">Iniciar Sesión</h2>
-        <form id="auth-form" class="space-y-4">
-            <div>
-                <label class="block text-sm text-zinc-400 mb-1">Correo electrónico</label>
-                <input type="email" id="email" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+    <!-- CONTENEDOR DE AUTENTICACIÓN (LOGIN / REGISTRO) -->
+    <div id="auth-container" class="flex flex-col items-center justify-center flex-grow p-6">
+        <div class="w-full max-w-sm bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-center gap-2 mb-6 text-emerald-400">
+                <i class="fa-solid fa-compact-disc text-3xl animate-spin"></i>
+                <h1 class="text-2xl font-bold tracking-wider text-white">Salva Music</h1>
             </div>
-            <div>
-                <label class="block text-sm text-zinc-400 mb-1">Contraseña</label>
-                <input type="password" id="password" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+            
+            <h2 id="auth-title" class="text-xl font-semibold mb-6 text-center text-zinc-200">Iniciar Sesión</h2>
+            
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Correo electrónico</label>
+                    <input type="email" id="email" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Contraseña</label>
+                    <input type="password" id="password" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <button type="submit" id="auth-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-3 rounded-xl transition shadow-lg shadow-emerald-500/20">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-xs text-zinc-400">
+                <span id="auth-switch-text">¿No tienes cuenta?</span>
+                <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-emerald-400 font-medium ml-1 hover:underline">Regístrate</button>
             </div>
-            <button type="submit" id="auth-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Entrar</button>
-        </form>
-        <p class="mt-4 text-center text-sm text-zinc-400">
-            <span id="auth-switch-text">¿No tienes cuenta?</span> 
-            <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-emerald-400 underline ml-1">Regístrate</button>
-        </p>
+        </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL (Oculta hasta iniciar sesión) -->
-    <div id="app-container" class="hidden max-w-4xl mx-auto p-4">
-        <!-- Header -->
-        <header class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
-            <h1 class="text-2xl font-bold text-emerald-400"><i class="fa-solid fa-music mr-2"></i>Music PWA</h1>
-            <div class="flex items-center gap-4">
-                <span id="user-display" class="text-sm text-zinc-400"></span>
-                <button onclick="logout()" class="bg-zinc-800 hover:bg-zinc-700 text-sm px-3 py-1.5 rounded-lg border border-zinc-700"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+    <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
+    <div id="app-container" class="hidden flex flex-col flex-grow w-full max-w-md mx-auto p-4">
+        
+        <!-- Header superior -->
+        <header class="flex items-center justify-between mb-6 pt-2">
+            <div class="flex items-center gap-2 text-emerald-400">
+                <i class="fa-solid fa-music text-xl"></i>
+                <span class="font-bold text-lg tracking-wide text-white">Salva Music</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="user-display" class="text-xs text-zinc-400 truncate max-w-[110px]"></span>
+                <button onclick="logout()" class="bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Salir
+                </button>
             </div>
         </header>
 
-        <!-- Pestañas de Navegación -->
-        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button onclick="switchTab('songs')" class="tab-btn active-tab bg-emerald-500 text-zinc-950 font-medium px-4 py-2 rounded-lg text-sm">Biblioteca</button>
-            <button onclick="switchTab('upload')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800">Subir Música</button>
-            <button onclick="switchTab('playlists')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800">Playlists</button>
-            <button onclick="switchTab('jam')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800"><i class="fa-solid fa-users text-emerald-400 mr-1"></i> Spotify Jam</button>
-        </div>
+        <!-- Navegación de Pestañas -->
+        <nav class="grid grid-cols-4 gap-2 mb-6">
+            <button onclick="switchTab('songs')" class="tab-btn bg-emerald-500 text-zinc-950 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition shadow-md">
+                <i class="fa-solid fa-house text-sm"></i> Biblioteca
+            </button>
+            <button onclick="switchTab('upload')" class="tab-btn bg-zinc-900 border border-zinc-800 text-zinc-300 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition">
+                <i class="fa-solid fa-cloud-arrow-up text-sm"></i> Subir
+            </button>
+            <button onclick="switchTab('playlists')" class="tab-btn bg-zinc-900 border border-zinc-800 text-zinc-300 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition">
+                <i class="fa-solid fa-list text-sm"></i> Playlists
+            </button>
+            <button onclick="switchTab('jam')" class="tab-btn bg-zinc-900 border border-zinc-800 text-zinc-300 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1 transition">
+                <i class="fa-solid fa-users text-sm"></i> Jam
+            </button>
+        </nav>
 
-        <!-- VISTA: BIBLIOTECA -->
-        <div id="tab-songs" class="tab-content space-y-3">
-            <h2 class="text-xl font-semibold mb-4">Canciones Disponibles</h2>
-            <div id="songs-list" class="space-y-2">
-                <!-- Las canciones se cargan dinámicamente aquí -->
-                <p class="text-zinc-500 text-center py-6">Cargando canciones...</p>
+        <!-- PESTAÑA 1: BIBLIOTECA -->
+        <section id="tab-songs" class="tab-content flex flex-col gap-3">
+            <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-1">Canciones Disponibles</h3>
+            <div id="songs-list" class="flex flex-col gap-2.5">
+                <!-- Las canciones se cargan dinámicamente -->
             </div>
-        </div>
+        </section>
 
-        <!-- VISTA: SUBIR MÚSICA -->
-        <div id="tab-upload" class="tab-content hidden max-w-lg mx-auto bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
-            <h2 class="text-xl font-semibold mb-4 text-emerald-400">Subir Nueva Canción</h2>
-            <form id="upload-form" class="space-y-4">
+        <!-- PESTAÑA 2: SUBIR MÚSICA -->
+        <section id="tab-upload" class="tab-content hidden flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Subir Nueva Canción</h3>
+            <form id="upload-form" class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl space-y-4">
                 <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Título de la canción</label>
-                    <input type="text" id="song-title" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Título de la canción</label>
+                    <input type="text" id="song-title" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
                 <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Artista</label>
-                    <input type="text" id="song-artist" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Artista</label>
+                    <input type="text" id="song-artist" required class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
                 <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Archivo de Audio (MP3 / WAV)</label>
-                    <input type="file" id="song-file" accept="audio/*" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-zinc-950 hover:file:bg-emerald-400">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Archivo de Audio (MP3)</label>
+                    <input type="file" id="song-file" accept="audio/*" required class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20">
                 </div>
                 <div>
-                    <label class="block text-sm text-zinc-400 mb-1">Carátula (Opcional)</label>
-                    <input type="file" id="song-cover" accept="image/*" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm">
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Carátula (Opcional)</label>
+                    <input type="file" id="song-cover" accept="image/*" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-300">
                 </div>
-                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Subir a la Nube</button>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-3 rounded-xl transition">
+                    Subir a la Nube
+                </button>
             </form>
-        </div>
+        </section>
 
-        <!-- VISTA: PLAYLISTS -->
-        <div id="tab-playlists" class="tab-content hidden">
-            <h2 class="text-xl font-semibold mb-4">Mis Listas de Reproducción</h2>
-            <p class="text-zinc-400 text-sm">Próximamente la gestión completa de playlists personalizadas.</p>
-        </div>
+        <!-- PESTAÑA 3: PLAYLISTS -->
+        <section id="tab-playlists" class="tab-content hidden flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Mis Listas de Reproducción</h3>
+            <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex gap-2">
+                <input type="text" id="playlist-name-input" placeholder="Nombre de la nueva playlist..." class="flex-grow bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                <button onclick="createPlaylist()" class="bg-emerald-500 text-zinc-950 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-400 transition">Crear</button>
+            </div>
+            <div id="playlists-container" class="flex flex-col gap-3">
+                <!-- Aquí se listarán las playlists -->
+            </div>
+        </section>
 
-        <!-- VISTA: JAM (SALA COLABORATIVA) -->
-        <div id="tab-jam" class="tab-content hidden max-w-lg mx-auto bg-zinc-900 p-6 rounded-2xl border border-zinc-800 text-center">
-            <h2 class="text-xl font-semibold mb-2 text-emerald-400"><i class="fa-solid fa-tower-broadcast"></i> Modo Jam (En Vivo)</h2>
-            <p class="text-zinc-400 text-sm mb-6">Comparte la misma cola de reproducción con otros usuarios en tiempo real.</p>
-            <div class="space-y-4">
-                <button onclick="createJamRoom()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Crear Sala Jam</button>
-                <div class="flex gap-2">
-                    <input type="text" id="room-code-input" placeholder="Código de Sala" class="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 uppercase text-center focus:outline-none focus:border-emerald-500">
-                    <button onclick="joinJamRoom()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg border border-zinc-700 font-semibold">Unirse</button>
+        <!-- PESTAÑA 4: JAM -->
+        <section id="tab-jam" class="tab-content hidden flex flex-col gap-4">
+            <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Salas Jam en Tiempo Real</h3>
+            <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl space-y-4">
+                <p class="text-xs text-zinc-400">Crea una sala para compartir sesión musical o introduce un código para unirte a una existente.</p>
+                <button onclick="createJamRoom()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2.5 rounded-xl text-sm transition">
+                    Crear Sala Jam
+                </button>
+                <div class="border-t border-zinc-800 pt-3 flex gap-2">
+                    <input type="text" id="room-code-input" placeholder="Código de sala" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm uppercase focus:outline-none focus:border-emerald-500">
+                    <button onclick="joinJamRoom()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition">Unirse</button>
+                </div>
+                <div id="jam-status" class="hidden text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800 text-zinc-300"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- REPRODUCTOR INFERIOR FLOTANTE (ESTÉTICA MEJORADA Y CONTROLES FUNCIONALES) -->
+    <div id="audio-player-bar" class="hidden fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 p-3 shadow-2xl z-50">
+        <div class="max-w-md mx-auto flex items-center justify-between gap-3">
+            <!-- Info de canción -->
+            <div class="flex items-center gap-3 overflow-hidden min-w-0 flex-grow">
+                <div class="w-12 h-12 bg-zinc-800 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-zinc-500">
+                    <i class="fa-solid fa-music"></i>
+                </div>
+                <div class="truncate">
+                    <h4 id="player-title" class="text-xs font-bold text-white truncate">Selecciona una canción</h4>
+                    <p id="player-artist" class="text-[10px] text-zinc-400 truncate">Artista</p>
                 </div>
             </div>
-            <div id="jam-status" class="mt-6 text-sm text-zinc-400 hidden"></div>
+
+            <!-- Controles de reproducción -->
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <button onclick="prevSong()" class="w-9 h-9 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-full flex items-center justify-center transition shadow">
+                    <i class="fa-solid fa-backward-step text-xs"></i>
+                </button>
+                <button id="play-pause-btn" onclick="togglePlay()" class="w-11 h-11 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-full flex items-center justify-center transition shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-play text-sm ml-0.5"></i>
+                </button>
+                <button onclick="nextSong()" class="w-9 h-9 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-full flex items-center justify-center transition shadow">
+                    <i class="fa-solid fa-forward-step text-xs"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- REPRODUCTOR INFERIOR FIJO -->
-    <div id="audio-player-bar" class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 p-4 hidden">
-        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3 w-full sm:w-1/3">
-                <div id="player-cover" class="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center text-zinc-500"><i class="fa-solid fa-compact-disc"></i></div>
-                <div class="overflow-hidden">
-                    <h4 id="player-title" class="text-sm font-semibold truncate">Selecciona una canción</h4>
-                    <p id="player-artist" class="text-xs text-zinc-400 truncate">-</p>
-                </div>
-            </div>
-            <div class="flex flex-col items-center w-full sm:w-1/3 gap-1">
-                <div class="flex items-center gap-4">
-                    <button onclick="prevSong()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-backward-step"></i></button>
-                    <button onclick="togglePlay()" id="play-pause-btn" class="w-10 h-10 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center hover:bg-emerald-400"><i class="fa-solid fa-play"></i></button>
-                    <button onclick="nextSong()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-forward-step"></i></button>
-                </div>
-                <audio id="main-audio-element" class="hidden"></audio>
-            </div>
-            <div class="flex items-center justify-end w-full sm:w-1/3 gap-2">
-                <button onclick="downloadCurrentSong()" class="text-zinc-400 hover:text-emerald-400 text-sm" title="Guardar para Offline"><i class="fa-solid fa-download"></i></button>
-            </div>
-        </div>
-    </div>
+    <!-- Elemento de audio oculto -->
+    <audio id="main-audio-element" onended="nextSong()"></audio>
 
-    <!-- Script principal de lógica conectado a PocketBase -->
     <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
 </body>
 </html>
