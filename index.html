@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music PWA - Tu Música en la Nube</title>
+    <!-- Tailwind CSS por CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SDK de PocketBase -->
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans pb-28">
+
+    <!-- SECCIÓN DE AUTENTICACIÓN (Se oculta si hay sesión activa) -->
+    <div id="auth-container" class="max-w-md mx-auto mt-20 p-6 bg-zinc-900 rounded-2xl shadow-xl border border-zinc-800">
+        <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-emerald-400">Iniciar Sesión</h2>
+        <form id="auth-form" class="space-y-4">
+            <div>
+                <label class="block text-sm text-zinc-400 mb-1">Correo electrónico</label>
+                <input type="email" id="email" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-sm text-zinc-400 mb-1">Contraseña</label>
+                <input type="password" id="password" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+            </div>
+            <button type="submit" id="auth-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Entrar</button>
+        </form>
+        <p class="mt-4 text-center text-sm text-zinc-400">
+            <span id="auth-switch-text">¿No tienes cuenta?</span> 
+            <button onclick="toggleAuthMode()" id="auth-switch-btn" class="text-emerald-400 underline ml-1">Regístrate</button>
+        </p>
+    </div>
+
+    <!-- APLICACIÓN PRINCIPAL (Oculta hasta iniciar sesión) -->
+    <div id="app-container" class="hidden max-w-4xl mx-auto p-4">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
+            <h1 class="text-2xl font-bold text-emerald-400"><i class="fa-solid fa-music mr-2"></i>Music PWA</h1>
+            <div class="flex items-center gap-4">
+                <span id="user-display" class="text-sm text-zinc-400"></span>
+                <button onclick="logout()" class="bg-zinc-800 hover:bg-zinc-700 text-sm px-3 py-1.5 rounded-lg border border-zinc-700"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+            </div>
+        </header>
+
+        <!-- Pestañas de Navegación -->
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <button onclick="switchTab('songs')" class="tab-btn active-tab bg-emerald-500 text-zinc-950 font-medium px-4 py-2 rounded-lg text-sm">Biblioteca</button>
+            <button onclick="switchTab('upload')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800">Subir Música</button>
+            <button onclick="switchTab('playlists')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800">Playlists</button>
+            <button onclick="switchTab('jam')" class="tab-btn bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-4 py-2 rounded-lg text-sm border border-zinc-800"><i class="fa-solid fa-users text-emerald-400 mr-1"></i> Spotify Jam</button>
+        </div>
+
+        <!-- VISTA: BIBLIOTECA -->
+        <div id="tab-songs" class="tab-content space-y-3">
+            <h2 class="text-xl font-semibold mb-4">Canciones Disponibles</h2>
+            <div id="songs-list" class="space-y-2">
+                <!-- Las canciones se cargan dinámicamente aquí -->
+                <p class="text-zinc-500 text-center py-6">Cargando canciones...</p>
+            </div>
+        </div>
+
+        <!-- VISTA: SUBIR MÚSICA -->
+        <div id="tab-upload" class="tab-content hidden max-w-lg mx-auto bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+            <h2 class="text-xl font-semibold mb-4 text-emerald-400">Subir Nueva Canción</h2>
+            <form id="upload-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1">Título de la canción</label>
+                    <input type="text" id="song-title" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1">Artista</label>
+                    <input type="text" id="song-artist" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1">Archivo de Audio (MP3 / WAV)</label>
+                    <input type="file" id="song-file" accept="audio/*" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-zinc-950 hover:file:bg-emerald-400">
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-1">Carátula (Opcional)</label>
+                    <input type="file" id="song-cover" accept="image/*" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Subir a la Nube</button>
+            </form>
+        </div>
+
+        <!-- VISTA: PLAYLISTS -->
+        <div id="tab-playlists" class="tab-content hidden">
+            <h2 class="text-xl font-semibold mb-4">Mis Listas de Reproducción</h2>
+            <p class="text-zinc-400 text-sm">Próximamente la gestión completa de playlists personalizadas.</p>
+        </div>
+
+        <!-- VISTA: JAM (SALA COLABORATIVA) -->
+        <div id="tab-jam" class="tab-content hidden max-w-lg mx-auto bg-zinc-900 p-6 rounded-2xl border border-zinc-800 text-center">
+            <h2 class="text-xl font-semibold mb-2 text-emerald-400"><i class="fa-solid fa-tower-broadcast"></i> Modo Jam (En Vivo)</h2>
+            <p class="text-zinc-400 text-sm mb-6">Comparte la misma cola de reproducción con otros usuarios en tiempo real.</p>
+            <div class="space-y-4">
+                <button onclick="createJamRoom()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold py-2 rounded-lg transition">Crear Sala Jam</button>
+                <div class="flex gap-2">
+                    <input type="text" id="room-code-input" placeholder="Código de Sala" class="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 uppercase text-center focus:outline-none focus:border-emerald-500">
+                    <button onclick="joinJamRoom()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg border border-zinc-700 font-semibold">Unirse</button>
+                </div>
+            </div>
+            <div id="jam-status" class="mt-6 text-sm text-zinc-400 hidden"></div>
+        </div>
+    </div>
+
+    <!-- REPRODUCTOR INFERIOR FIJO -->
+    <div id="audio-player-bar" class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 p-4 hidden">
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 w-full sm:w-1/3">
+                <div id="player-cover" class="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center text-zinc-500"><i class="fa-solid fa-compact-disc"></i></div>
+                <div class="overflow-hidden">
+                    <h4 id="player-title" class="text-sm font-semibold truncate">Selecciona una canción</h4>
+                    <p id="player-artist" class="text-xs text-zinc-400 truncate">-</p>
+                </div>
+            </div>
+            <div class="flex flex-col items-center w-full sm:w-1/3 gap-1">
+                <div class="flex items-center gap-4">
+                    <button onclick="prevSong()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-backward-step"></i></button>
+                    <button onclick="togglePlay()" id="play-pause-btn" class="w-10 h-10 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center hover:bg-emerald-400"><i class="fa-solid fa-play"></i></button>
+                    <button onclick="nextSong()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-forward-step"></i></button>
+                </div>
+                <audio id="main-audio-element" class="hidden"></audio>
+            </div>
+            <div class="flex items-center justify-end w-full sm:w-1/3 gap-2">
+                <button onclick="downloadCurrentSong()" class="text-zinc-400 hover:text-emerald-400 text-sm" title="Guardar para Offline"><i class="fa-solid fa-download"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script principal de lógica conectado a PocketBase -->
+    <script src="js/app.js"></script>
+</body>
+</html>
