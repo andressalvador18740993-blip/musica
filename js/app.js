@@ -47,17 +47,14 @@ authForm.addEventListener("submit", async (e) => {
 
     try {
         if (isRegistering) {
-            // Registrar usuario
             await pb.collection('users').create({
                 email: email,
                 password: password,
                 passwordConfirm: password,
             });
-            // Auto login tras registro
             await pb.collection('users').authWithPassword(email, password);
             alert("¡Cuenta creada con éxito!");
         } else {
-            // Iniciar sesión
             await pb.collection('users').authWithPassword(email, password);
         }
         showApp();
@@ -81,35 +78,31 @@ function showApp() {
     authContainer.classList.add("hidden");
     appContainer.classList.remove("hidden");
     userDisplay.textContent = pb.authStore.model.email;
-    loadSongs(); // Cargar la biblioteca al entrar
+    loadSongs(); 
 }
 
 // --- NAVEGACIÓN ENTRE PESTAÑAS ---
 
 function switchTab(tabName) {
-    // Ocultar todo el contenido
     document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
-    // Desactivar botones
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.classList.remove("bg-emerald-500", "text-zinc-950", "active-tab");
         btn.classList.add("bg-zinc-900", "text-zinc-300", "border", "border-zinc-800");
     });
 
-    // Mostrar la pestaña seleccionada
     document.getElementById(`tab-${tabName}`).classList.remove("hidden");
     
-    // Activar el botón correspondiente
     event.currentTarget.classList.remove("bg-zinc-900", "text-zinc-300", "border", "border-zinc-800");
     event.currentTarget.classList.add("bg-emerald-500", "text-zinc-950");
 }
 
-// --- GESTIÓN DE CANCIONES Y REPRODUCTOR ---
+// --- GESTIÓN DE CANCIONES Y REPRODUCTOR (Lote de 20 canciones) ---
 
 async function loadSongs() {
     const songsListContainer = document.getElementById("songs-list");
     try {
-        // Obtener canciones de PocketBase ordenadas por fecha de creación
-        const records = await pb.collection('songs').getList(1, 50, {
+        // Cargar hasta 20 canciones de PocketBase para gestión eficiente en caché
+        const records = await pb.collection('songs').getList(1, 20, {
             sort: '-created',
         });
 
@@ -120,7 +113,6 @@ async function loadSongs() {
 
         songsListContainer.innerHTML = "";
         records.items.forEach(song => {
-            // Obtener la URL del archivo de audio usando el helper de PocketBase
             const audioUrl = pb.files.getUrl(song, song.audio_file);
             const coverUrl = song.cover ? pb.files.getUrl(song, song.cover) : null;
 
@@ -148,7 +140,7 @@ async function loadSongs() {
     }
 }
 
-// Subir música
+// Subir música (hasta el límite de 50MB configurado)
 const uploadForm = document.getElementById("upload-form");
 uploadForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -171,7 +163,7 @@ uploadForm.addEventListener("submit", async (e) => {
         await pb.collection('songs').create(formData);
         alert("¡Canción subida con éxito!");
         uploadForm.reset();
-        switchTab('songs'); // Volver a la biblioteca
+        switchTab('songs'); 
         loadSongs();
     } catch (error) {
         console.error("Error al subir la canción:", error);
@@ -192,7 +184,7 @@ function playSong(url, title, artist) {
     playerArtist.textContent = artist;
     
     mainAudioElement.src = url;
-    mainAudioElement.play();
+    mainAudioElement.play().catch(e => console.log("Reproducción diferida por políticas del navegador:", e));
     playPauseBtn.innerHTML = `<i class="fa-solid fa-pause"></i>`;
 }
 
@@ -206,12 +198,12 @@ function togglePlay() {
     }
 }
 
-// Simulación de creación de Jam
+// Funciones de Jam
 function createJamRoom() {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const statusDiv = document.getElementById("jam-status");
     statusDiv.classList.remove("hidden");
-    statusDiv.innerHTML = `Sala creada con éxito. Tu código es: <strong class="text-emerald-400 text-lg">${code}</strong>. (Sincronización en tiempo real lista para conectar).`;
+    statusDiv.innerHTML = `Sala creada con éxito. Tu código es: <strong class="text-emerald-400 text-lg">${code}</strong>.`;
 }
 
 function joinJamRoom() {
