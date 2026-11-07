@@ -1,16 +1,15 @@
 {
-    "name": "Music PWA Offline & Jam",
-    "short_name": "MusicPWA",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#09090b",
-    "theme_color": "#10b981",
-    "icons": [
-        {
-            "src": "https://cdn-icons-png.flaticon.com/512/3291/3291695.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
+  "name": "Salva Music",
+  "short_name": "Salva Music",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22110%22 fill=%22%237c3aed%22/><path d=%22M210 120v216.5a48 48 0 1 1-32-45.2V160h160v120.5a48 48 0 1 1-32-45.2V120H210z%22 fill=%22%23ffffff%22/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
 }
