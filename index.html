@@ -99,9 +99,7 @@
             
             <!-- Pestaña Mi Biblioteca -->
             <div id="tab-songs" class="tab-content space-y-3">
-                <div id="songs-list" class="space-y-3">
-                    <!-- Las canciones se cargan dinámicamente aquí -->
-                </div>
+                <div id="songs-list" class="space-y-3"></div>
             </div>
 
             <!-- Pestaña Subir -->
@@ -136,7 +134,14 @@
 
             <!-- Pestaña Playlists -->
             <div id="tab-playlists" class="tab-content hidden space-y-4">
-                <h2 class="text-sm font-bold text-zinc-300">Listas de reproducción</h2>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-zinc-300">Tus Listas de Reproducción</h2>
+                    <button onclick="openCreatePlaylistModal()" class="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Nueva Playlist
+                    </button>
+                </div>
+                
+                <!-- Playlist Offline por defecto -->
                 <div onclick="openOfflinePlaylist()" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-500 p-4 rounded-2xl flex items-center justify-between cursor-pointer transition">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-lg">
@@ -148,6 +153,11 @@
                         </div>
                     </div>
                     <i class="fa-solid fa-chevron-right text-zinc-500"></i>
+                </div>
+
+                <!-- Contenedor de Playlists Personalizadas -->
+                <div id="custom-playlists-container" class="space-y-3">
+                    <!-- Se cargan aquí las listas creadas -->
                 </div>
             </div>
 
@@ -168,6 +178,43 @@
         </main>
     </div>
 
+    <!-- MODAL CREAR PLAYLIST / SELECCIONAR CANCIONES -->
+    <div id="create-playlist-modal" class="hidden fixed inset-0 bg-zinc-950/80 backdrop-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <h3 class="font-bold text-sm text-white flex items-center gap-2"><i class="fa-solid fa-list text-emerald-400"></i> Crear Nueva Playlist</h3>
+                <button onclick="closeCreatePlaylistModal()" class="text-zinc-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-1">Nombre de la Playlist</label>
+                <input type="text" id="playlist-name-input" placeholder="Ej: Favoritas, Fiesta..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 text-white">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-zinc-400 mb-2">Selecciona las canciones de tu biblioteca:</label>
+                <div id="playlist-selectable-songs" class="overflow-y-auto max-h-[40vh] space-y-2 pr-1">
+                    <!-- Lista de selección de canciones -->
+                </div>
+            </div>
+
+            <button onclick="saveNewPlaylist()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold py-3 rounded-xl transition text-sm">Guardar Playlist</button>
+        </div>
+    </div>
+
+    <!-- MODAL VER DETALLE DE PLAYLIST -->
+    <div id="view-playlist-modal" class="hidden fixed inset-0 bg-zinc-950/80 backdrop-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-4 max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <h3 id="view-playlist-title" class="font-bold text-sm text-white truncate">Playlist</h3>
+                <button onclick="closeViewPlaylistModal()" class="text-zinc-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="view-playlist-songs" class="overflow-y-auto space-y-2 flex-grow">
+                <!-- Canciones de la playlist seleccionada -->
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PLAYLIST OFFLINE -->
     <div id="offline-modal" class="hidden fixed inset-0 bg-zinc-950/80 backdrop-blur z-50 flex items-center justify-center p-4">
         <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-6 space-y-4 max-h-[80vh] flex flex-col">
@@ -175,9 +222,7 @@
                 <h3 class="font-bold text-sm text-white flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down text-emerald-400"></i> Canciones Offline</h3>
                 <button onclick="closeOfflinePlaylist()" class="text-zinc-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div id="offline-songs-list" class="overflow-y-auto space-y-2 flex-grow">
-                <!-- Canciones offline cargadas aquí -->
-            </div>
+            <div id="offline-songs-list" class="overflow-y-auto space-y-2 flex-grow"></div>
         </div>
     </div>
 
@@ -194,11 +239,9 @@
         </div>
     </div>
 
-    <!-- BARRA DE REPRODUCCIÓN FLOTANTE (GRANDE Y CON SHUFFLE) -->
+    <!-- BARRA DE REPRODUCCIÓN FLOTANTE -->
     <div id="audio-player-bar" class="hidden fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 p-4 shadow-2xl z-50">
         <div class="max-w-md mx-auto flex flex-col gap-3">
-            
-            <!-- Info de la Canción -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3 overflow-hidden">
                     <div class="w-12 h-12 bg-zinc-800 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-zinc-400">
@@ -209,45 +252,31 @@
                         <p id="player-artist" class="text-xs text-zinc-400 truncate">Artista</p>
                     </div>
                 </div>
-                <!-- Botón de Letra / Karaoke -->
                 <button onclick="openLyrics()" class="text-zinc-400 hover:text-emerald-400 p-2 transition" title="Ver Letra">
                     <i class="fa-solid fa-microphone-lines text-lg"></i>
                 </button>
             </div>
 
-            <!-- Controles de Reproducción Grandes -->
             <div class="flex items-center justify-around py-1">
-                <!-- Botón Aleatorio (Toggle) -->
                 <button id="shuffle-btn" onclick="toggleShuffle()" class="text-zinc-400 hover:text-emerald-400 p-3 text-lg transition" title="Modo Aleatorio">
                     <i class="fa-solid fa-shuffle"></i>
                 </button>
-
-                <!-- Anterior -->
                 <button onclick="prevSong()" class="text-zinc-200 hover:text-emerald-400 p-3 text-xl transition">
                     <i class="fa-solid fa-backward-step"></i>
                 </button>
-
-                <!-- Play / Pause Grande -->
                 <button id="play-pause-btn" onclick="togglePlay()" class="w-14 h-14 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-full flex items-center justify-center text-xl shadow-lg transition">
                     <i class="fa-solid fa-play ml-0.5"></i>
                 </button>
-
-                <!-- Siguiente -->
                 <button onclick="nextSong()" class="text-zinc-200 hover:text-emerald-400 p-3 text-xl transition">
                     <i class="fa-solid fa-forward-step"></i>
                 </button>
-
-                <!-- Espacio simétrico -->
                 <div class="w-8"></div>
             </div>
-
         </div>
     </div>
 
-    <!-- Elemento de Audio Oculto -->
     <audio id="main-audio-element" onended="nextSong()"></audio>
 
-    <!-- Archivo de Lógica Principal -->
     <script src="js/app.js"></script>
 </body>
 </html>
