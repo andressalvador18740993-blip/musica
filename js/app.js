@@ -4,7 +4,7 @@ const pb = new PocketBase(PB_URL);
 let currentSongsList = [];
 let currentIndex = 0;
 let isRegistering = false;
-let isShuffleActive = false; // Estado del modo aleatorio
+let isShuffleActive = false;
 const CACHE_NAME = "salvamusic-offline-v5";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showAuth();
     }
     updateOfflineCount();
+    loadCustomPlaylists();
 });
 
 function toggleAuthMode() {
@@ -38,11 +39,7 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
 
     try {
         if (isRegistering) {
-            await pb.collection('users').create({ 
-                email: email, 
-                password: password, 
-                passwordConfirm: password 
-            });
+            await pb.collection('users').create({ email, password, passwordConfirm: password });
             await pb.collection('users').authWithPassword(email, password);
             alert("¡Cuenta creada con éxito!");
         } else {
@@ -82,6 +79,10 @@ function switchTab(tabName) {
     document.getElementById(`tab-${tabName}`).classList.remove("hidden");
     event.currentTarget.classList.remove("bg-zinc-900", "text-zinc-300", "border", "border-zinc-800");
     event.currentTarget.classList.add("bg-emerald-500", "text-zinc-950");
+
+    if (tabName === 'playlists') {
+        loadCustomPlaylists();
+    }
 }
 
 async function loadSongs() {
@@ -147,7 +148,152 @@ function renderSongsList(songs) {
     songsListContainer.innerHTML = htmlContent;
 }
 
-// Activar / Desactivar Reproducción Aleatoria (Toggle)
+// --- GESTIÓN DE PLAYLISTS PERSONALIZADAS ---
+
+function openCreatePlaylistModal() {
+    const modal = document.getElementById("create-playlist-modal");
+    if (!modal) {
+        alert("Error: El modal de playlist no se encontró en el HTML.");
+        return;
+    }
+
+    document.getElementById("playlist-name-input").value = "";
+    const container = document.getElementById("playlist-selectable-songs");
+    
+    if (!currentSongsList || currentSongsList.length === 0) {
+        container.innerHTML = `<p class="text-zinc-500 text-center py-4 text-xs">No hay canciones en tu biblioteca para agregar.</p>`;
+    } else {
+        container.innerHTML = "";
+        currentSongsList.forEach((song) => {
+            container.innerHTML += `
+                <label class="flex items-center justify-between bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 cursor-pointer hover:border-emerald-500 transition">
+                    <div class="truncate flex items-center gap-2">
+                        <input type="checkbox" value="${song.id}" class="playlist-song-checkbox w-4 h-4 accent-emerald-500 rounded">
+                        <div class="truncate">
+                            <p class="text-xs font-semibold text-white truncate">${song.title}</p>
+                            <p class="text-[10px] text-zinc-400 truncate">${song.artist}</p>
+                        </div>
+                    </div>
+                </label>
+            `;
+        });
+    }
+    modal.classList.remove("hidden");
+}
+
+function closeCreatePlaylistModal() {
+    document.getElementById("create-playlist-modal").classList.add("hidden");
+}
+
+function saveNewPlaylist() {
+    const name = document.getElementById("playlist-name-input").value.trim();
+    if (!name) {
+        alert("Por favor ingresa un nombre para la playlist.");
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll(".playlist-song-checkbox:checked");
+    const selectedSongIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (selectedSongIds.length === 0) {
+        alert("Selecciona al menos una canción para la playlist.");
+        return;
+    }
+
+    let playlists = JSON.parse(localStorage.getItem('salva_playlists') || '[]');
+    playlists.push({
+        id: 'pl_' + Date.now(),
+        name: name,
+        songIds: selectedSongIds
+    });
+
+    localStorage.setItem('salva_playlists', JSON.stringify(playlists));
+    alert(`¡Playlist "${name}" creada con éxito!`);
+    closeCreatePlaylistModal();
+    loadCustomPlaylists();
+}
+
+function loadCustomPlaylists() {
+    const container = document.getElementById("custom-playlists-container");
+    if (!container) return;
+    const playlists = JSON.parse(localStorage.getItem('salva_playlists') || '[]');
+
+    if (playlists.length === 0) {
+        container.innerHTML = `<p class="text-zinc-600 text-center py-2 text-xs">No tienes playlists personalizadas creadas.</p>`;
+        return;
+    }
+
+    container.innerHTML = "";
+    playlists.forEach(pl => {
+        container.innerHTML += `
+            <div class="bg-zinc-900 border border-zinc-800 hover:border-emerald-500 p-4 rounded-2xl flex items-center justify-between cursor-pointer transition" onclick="openPlaylistDetail('${pl.id}')">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-list-music"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">${pl.name}</h3>
+                        <p class="text-xs text-zinc-400">${pl.songIds.length} canciones</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="event.stopPropagation(); deletePlaylist('${pl.id}')" class="text-zinc-500 hover:text-red-400 p-2" title="Eliminar playlist">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                    <i class="fa-solid fa-chevron-right text-zinc-500"></i>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function openPlaylistDetail(playlistId) {
+    const playlists = JSON.parse(localStorage.getItem('salva_playlists') || '[]');
+    const pl = playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+
+    document.getElementById("view-playlist-title").textContent = pl.name;
+    const container = document.getElementById("view-playlist-songs");
+    container.innerHTML = "";
+
+    const songsInPl = currentSongsList.filter(s => pl.songIds.includes(s.id));
+
+    if (songsInPl.length === 0) {
+        container.innerHTML = `<p class="text-zinc-500 text-center py-4 text-xs">Esta playlist no tiene canciones disponibles.</p>`;
+    } else {
+        songsInPl.forEach((song) => {
+            const audioUrl = pb.files.getUrl(song, song.audio_file);
+            container.innerHTML += `
+                <div class="flex items-center justify-between bg-zinc-950 p-3 rounded-xl border border-zinc-800">
+                    <div class="truncate">
+                        <h4 class="text-sm font-semibold text-white truncate">${song.title}</h4>
+                        <p class="text-xs text-zinc-400 truncate">${song.artist}</p>
+                    </div>
+                    <button onclick="playSongUrl('${audioUrl}', '${song.title}', '${song.artist}')" class="w-9 h-9 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-play text-xs ml-0.5"></i>
+                    </button>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById("view-playlist-modal").classList.remove("hidden");
+}
+
+function closeViewPlaylistModal() {
+    document.getElementById("view-playlist-modal").classList.add("hidden");
+}
+
+function deletePlaylist(playlistId) {
+    if (!confirm("¿Estás seguro de eliminar esta playlist?")) return;
+    let playlists = JSON.parse(localStorage.getItem('salva_playlists') || '[]');
+    playlists = playlists.filter(p => p.id !== playlistId);
+    localStorage.setItem('salva_playlists', JSON.stringify(playlists));
+    loadCustomPlaylists();
+}
+
+// --- FIN PLAYLISTS ---
+
 function toggleShuffle() {
     isShuffleActive = !isShuffleActive;
     const shuffleBtn = document.getElementById("shuffle-btn");
@@ -164,9 +310,7 @@ function toggleShuffle() {
 }
 
 async function deleteSong(songId, songTitle) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar "${songTitle}" de tu biblioteca?`)) {
-        return;
-    }
+    if (!confirm(`¿Estás seguro de que deseas eliminar "${songTitle}" de tu biblioteca?`)) return;
 
     try {
         await pb.collection('songs').delete(songId);
@@ -174,7 +318,7 @@ async function deleteSong(songId, songTitle) {
         loadSongs();
     } catch (error) {
         console.error("Error al eliminar la canción:", error);
-        alert("No se pudo eliminar la canción. Inténtalo de nuevo.");
+        alert("No se pudo eliminar la canción.");
     }
 }
 
@@ -222,7 +366,7 @@ async function openOfflinePlaylist() {
             const songUrl = req.url;
             const matchedSong = currentSongsList.find(s => pb.files.getUrl(s, s.audio_file) === songUrl) || { title: `Canción Offline ${idx+1}`, artist: 'Local' };
             const div = document.createElement("div");
-            div.className = "flex items-center justify-between bg-zinc-900 p-3 rounded-xl border border-zinc-800";
+            div.className = "flex items-center justify-between bg-zinc-950 p-3 rounded-xl border border-zinc-800";
             div.innerHTML = `
                 <div class="truncate">
                     <h4 class="text-sm font-semibold text-white truncate">${matchedSong.title}</h4>
@@ -244,7 +388,6 @@ function closeOfflinePlaylist() {
 }
 
 function playSongUrl(url, title, artist) {
-    closeOfflinePlaylist();
     document.getElementById("audio-player-bar").classList.remove("hidden");
     document.getElementById("player-title").textContent = title;
     document.getElementById("player-artist").textContent = artist;
@@ -259,15 +402,7 @@ function playSongByIndex(index) {
     currentIndex = index;
     const song = currentSongsList[currentIndex];
     const audioUrl = pb.files.getUrl(song, song.audio_file);
-
-    document.getElementById("audio-player-bar").classList.remove("hidden");
-    document.getElementById("player-title").textContent = song.title;
-    document.getElementById("player-artist").textContent = song.artist;
-
-    const audioEl = document.getElementById("main-audio-element");
-    audioEl.src = audioUrl;
-    audioEl.play();
-    document.getElementById("play-pause-btn").innerHTML = `<i class="fa-solid fa-pause text-sm"></i>`;
+    playSongUrl(audioUrl, song.title, song.artist);
 }
 
 function togglePlay() {
@@ -283,15 +418,11 @@ function togglePlay() {
 
 function nextSong() {
     if (currentSongsList.length === 0) return;
-    
     if (isShuffleActive) {
-        // Si el modo aleatorio está activo, elige un índice completamente al azar
         currentIndex = Math.floor(Math.random() * currentSongsList.length);
     } else {
-        // Si está apagado, sigue el orden normal secuencial
         currentIndex = (currentIndex + 1) % currentSongsList.length;
     }
-    
     playSongByIndex(currentIndex);
 }
 
@@ -326,7 +457,7 @@ uploadForm.addEventListener("submit", async (e) => {
         });
 
         if (checkDuplicate.totalItems > 0) {
-            alert(`Error: Ya tienes registrada la canción "${titleInput}" de "${artistInput}" en tu biblioteca.`);
+            alert(`Error: Ya tienes registrada la canción "${titleInput}" de "${artistInput}".`);
             return;
         }
 
@@ -347,7 +478,7 @@ uploadForm.addEventListener("submit", async (e) => {
         loadSongs();
     } catch (error) {
         console.error("Error al subir archivo:", error);
-        alert("Error al verificar o subir el archivo. Inténtalo de nuevo.");
+        alert("Error al verificar o subir el archivo.");
     }
 });
 
