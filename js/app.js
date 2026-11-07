@@ -4,7 +4,7 @@ const pb = new PocketBase(PB_URL);
 let currentSongsList = [];
 let currentIndex = 0;
 let isRegistering = false;
-const CACHE_NAME = "salvamusic-offline-v1";
+const CACHE_NAME = "salvamusic-offline-v5";
 
 document.addEventListener("DOMContentLoaded", () => {
     if (pb.authStore.isValid) {
@@ -37,7 +37,11 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
 
     try {
         if (isRegistering) {
-            await pb.collection('users').create({ email, password, passwordConfirm: password });
+            await pb.collection('users').create({ 
+                email: email, 
+                password: password, 
+                passwordConfirm: password 
+            });
             await pb.collection('users').authWithPassword(email, password);
             alert("¡Cuenta creada con éxito!");
         } else {
@@ -46,7 +50,7 @@ document.getElementById("auth-form").addEventListener("submit", async (e) => {
         showApp();
     } catch (error) {
         console.error("Error de autenticación:", error);
-        alert("Verifica tus datos o conexión.");
+        alert("Correo o contraseña incorrectos. Verifica tus datos.");
     }
 });
 
@@ -79,12 +83,10 @@ function switchTab(tabName) {
     event.currentTarget.classList.add("bg-emerald-500", "text-zinc-950");
 }
 
-// CARGAR SOLO LAS CANCIONES DEL USUARIO ACTUAL
 async function loadSongs() {
     const songsListContainer = document.getElementById("songs-list");
     try {
         const userId = pb.authStore.model.id;
-        // Filtramos para que cada usuario vea unicamente sus canciones
         const records = await pb.collection('songs').getList(1, 50, {
             filter: `uploaded_by = "${userId}"`,
             sort: '-created',
@@ -96,14 +98,30 @@ async function loadSongs() {
             return;
         }
 
-        songsListContainer.innerHTML = "";
-        currentSongsList.forEach((song, index) => {
-            const coverUrl = song.cover ? pb.files.getUrl(song, song.cover) : null;
-            const audioUrl = pb.files.getUrl(song, song.audio_file);
+        renderSongsList(currentSongsList);
+    } catch (error) {
+        console.error("Error al cargar canciones:", error);
+    }
+}
 
-            const songElement = document.createElement("div");
-            songElement.className = "flex items-center justify-between bg-zinc-900 p-3 rounded-xl border border-zinc-800 hover:border-zinc-700 transition";
-            songElement.innerHTML = `
+function renderSongsList(songs) {
+    const songsListContainer = document.getElementById("songs-list");
+    
+    let htmlContent = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-zinc-400">${songs.length} canciones</span>
+            <button onclick="playShuffle()" class="bg-zinc-900 border border-zinc-800 hover:border-emerald-500 text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-shuffle"></i> Aleatorio
+            </button>
+        </div>
+    `;
+
+    songs.forEach((song, index) => {
+        const coverUrl = song.cover ? pb.files.getUrl(song, song.cover) : null;
+        const audioUrl = pb.files.getUrl(song, song.audio_file);
+
+        htmlContent += `
+            <div class="flex items-center justify-between bg-zinc-900 p-3 rounded-xl border border-zinc-800 hover:border-zinc-700 transition">
                 <div class="flex items-center gap-3 overflow-hidden cursor-pointer flex-grow" onclick="playSongByIndex(${index})">
                     <div class="w-12 h-12 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center text-zinc-500">
                         ${coverUrl ? `<img src="${coverUrl}" class="w-full h-full object-cover">` : '<i class="fa-solid fa-music"></i>'}
@@ -117,19 +135,41 @@ async function loadSongs() {
                     <button onclick="toggleDownloadOffline('${audioUrl}', '${song.title}')" class="w-9 h-9 bg-zinc-800 hover:bg-zinc-700 text-emerald-400 rounded-full flex items-center justify-center transition" title="Guardar offline">
                         <i class="fa-solid fa-cloud-arrow-down text-xs"></i>
                     </button>
-                    <button onclick="playSongByIndex(${index})" class="w-9 h-9 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 rounded-full flex items-center justify-center transition">
+                    <button onclick="playSongByIndex(${index})" class="w-9 h-9 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 rounded-full flex items-center justify-center transition" title="Reproducir">
                         <i class="fa-solid fa-play text-xs ml-0.5"></i>
                     </button>
+                    <button onclick="deleteSong('${song.id}', '${song.title}')" class="w-9 h-9 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-full flex items-center justify-center transition" title="Eliminar canción">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
                 </div>
-            `;
-            songsListContainer.appendChild(songElement);
-        });
+            </div>
+        `;
+    });
+
+    songsListContainer.innerHTML = htmlContent;
+}
+
+async function deleteSong(songId, songTitle) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar "${songTitle}" de tu biblioteca?`)) {
+        return;
+    }
+
+    try {
+        await pb.collection('songs').delete(songId);
+        alert(`¡"${songTitle}" ha sido eliminada con éxito!`);
+        loadSongs();
     } catch (error) {
-        console.error("Error al cargar canciones:", error);
+        console.error("Error al eliminar la canción:", error);
+        alert("No se pudo eliminar la canción. Inténtalo de nuevo.");
     }
 }
 
-// GUARDAR EN CACHÉ LOCAL NAVEGADOR (OFFLINE)
+function playShuffle() {
+    if (currentSongsList.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * currentSongsList.length);
+    playSongByIndex(randomIndex);
+}
+
 async function toggleDownloadOffline(url, title) {
     try {
         const cache = await caches.open(CACHE_NAME);
@@ -206,7 +246,6 @@ function playSongUrl(url, title, artist) {
     document.getElementById("play-pause-btn").innerHTML = `<i class="fa-solid fa-pause text-sm"></i>`;
 }
 
-// REPRODUCTOR Y CONTROL DE LETRA
 function playSongByIndex(index) {
     if (index < 0 || index >= currentSongsList.length) return;
     currentIndex = index;
@@ -246,7 +285,6 @@ function prevSong() {
     playSongByIndex(currentIndex);
 }
 
-// GESTIÓN DE LETRA (KARAOKE)
 function openLyrics() {
     if (currentSongsList.length === 0) return;
     const song = currentSongsList[currentIndex];
@@ -259,20 +297,32 @@ function closeLyrics() {
     document.getElementById("lyrics-modal").classList.add("hidden");
 }
 
-// SUBIR MÚSICA CON LETRA
 const uploadForm = document.getElementById("upload-form");
 uploadForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append("title", document.getElementById("song-title").value);
-    formData.append("artist", document.getElementById("song-artist").value);
-    formData.append("lyrics", document.getElementById("song-lyrics").value);
-    formData.append("audio_file", document.getElementById("song-file").files[0]);
-    const cover = document.getElementById("song-cover").files[0];
-    if (cover) formData.append("cover", cover);
-    formData.append("uploaded_by", pb.authStore.model.id);
+    const titleInput = document.getElementById("song-title").value.trim();
+    const artistInput = document.getElementById("song-artist").value.trim();
+    const userId = pb.authStore.model.id;
 
     try {
+        const checkDuplicate = await pb.collection('songs').getList(1, 1, {
+            filter: `uploaded_by = "${userId}" && title = "${titleInput}" && artist = "${artistInput}"`
+        });
+
+        if (checkDuplicate.totalItems > 0) {
+            alert(`Error: Ya tienes registrada la canción "${titleInput}" de "${artistInput}" en tu biblioteca.`);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("title", titleInput);
+        formData.append("artist", artistInput);
+        formData.append("lyrics", document.getElementById("song-lyrics").value);
+        formData.append("audio_file", document.getElementById("song-file").files[0]);
+        const cover = document.getElementById("song-cover").files[0];
+        if (cover) formData.append("cover", cover);
+        formData.append("uploaded_by", userId);
+
         alert("Subiendo canción a tu biblioteca...");
         await pb.collection('songs').create(formData);
         alert("¡Subida con éxito!");
@@ -280,11 +330,11 @@ uploadForm.addEventListener("submit", async (e) => {
         switchTab('songs');
         loadSongs();
     } catch (error) {
-        alert("Error al subir archivo.");
+        console.error("Error al subir archivo:", error);
+        alert("Error al verificar o subir el archivo. Inténtalo de nuevo.");
     }
 });
 
-// JAM
 function createJamRoom() {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const statusDiv = document.getElementById("jam-status");
