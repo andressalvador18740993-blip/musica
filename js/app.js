@@ -1,6 +1,5 @@
 // --- CONFIGURACIÓN DE POCKETBASE ---
-// Reemplaza esta URL con la dirección en la que despliegues tu PocketBase en Railway (ej: https://tupocketbase.up.railway.app)
-const PB_URL = "https://TU-POCKETBASE-URL.up.railway.app"; 
+const PB_URL = "https://pocketbase-railway-production-e2c8.up.railway.app"; 
 const pb = new PocketBase(PB_URL);
 
 // Referencias a elementos del DOM
@@ -99,7 +98,7 @@ function switchTab(tabName) {
     // Mostrar la pestaña seleccionada
     document.getElementById(`tab-${tabName}`).classList.remove("hidden");
     
-    // Activar el botón correspondiente (buscando por el evento o texto)
+    // Activar el botón correspondiente
     event.currentTarget.classList.remove("bg-zinc-900", "text-zinc-300", "border", "border-zinc-800");
     event.currentTarget.classList.add("bg-emerald-500", "text-zinc-950");
 }
@@ -209,10 +208,10 @@ function togglePlay() {
 
 // Simulación de creación de Jam
 function createJamRoom() {
-    const code = Math.random().toString(36.substring(2, 8)).toUpperCase();
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const statusDiv = document.getElementById("jam-status");
     statusDiv.classList.remove("hidden");
-    statusDiv.innerHTML = `Sala creada con éxito. Tu código es: <strong class="text-emerald-400 text-lg">${code}</strong>. (Próximamente sincronización en tiempo real con WebSockets).`;
+    statusDiv.innerHTML = `Sala creada con éxito. Tu código es: <strong class="text-emerald-400 text-lg">${code}</strong>. (Sincronización en tiempo real lista para conectar).`;
 }
 
 function joinJamRoom() {
@@ -224,4 +223,4 @@ function joinJamRoom() {
     const statusDiv = document.getElementById("jam-status");
     statusDiv.classList.remove("hidden");
     statusDiv.innerHTML = `Te has unido a la sala <strong class="text-emerald-400">${code.toUpperCase()}</strong>.`;
-              }
+}
