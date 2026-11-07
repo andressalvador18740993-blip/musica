@@ -107,7 +107,6 @@ async function loadSongs() {
 function renderSongsList(songs) {
     const songsListContainer = document.getElementById("songs-list");
     
-    // Agregamos un botón superior para reproducción aleatoria si hay canciones
     let htmlContent = `
         <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-zinc-400">${songs.length} canciones</span>
@@ -136,8 +135,11 @@ function renderSongsList(songs) {
                     <button onclick="toggleDownloadOffline('${audioUrl}', '${song.title}')" class="w-9 h-9 bg-zinc-800 hover:bg-zinc-700 text-emerald-400 rounded-full flex items-center justify-center transition" title="Guardar offline">
                         <i class="fa-solid fa-cloud-arrow-down text-xs"></i>
                     </button>
-                    <button onclick="playSongByIndex(${index})" class="w-9 h-9 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 rounded-full flex items-center justify-center transition">
+                    <button onclick="playSongByIndex(${index})" class="w-9 h-9 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 rounded-full flex items-center justify-center transition" title="Reproducir">
                         <i class="fa-solid fa-play text-xs ml-0.5"></i>
+                    </button>
+                    <button onclick="deleteSong('${song.id}', '${song.title}')" class="w-9 h-9 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-full flex items-center justify-center transition" title="Eliminar canción">
+                        <i class="fa-solid fa-trash text-xs"></i>
                     </button>
                 </div>
             </div>
@@ -147,10 +149,24 @@ function renderSongsList(songs) {
     songsListContainer.innerHTML = htmlContent;
 }
 
-// Reproducción Aleatoria (Shuffle)
+// Función para eliminar canción
+async function deleteSong(songId, songTitle) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar "${songTitle}" de tu biblioteca?`)) {
+        return;
+    }
+
+    try {
+        await pb.collection('songs').delete(songId);
+        alert(`¡"${songTitle}" ha sido eliminada con éxito!`);
+        loadSongs(); // Recargar la lista actualizada
+    } catch (error) {
+        console.error("Error al eliminar la canción:", error);
+        alert("No se pudo eliminar la canción. Inténtalo de nuevo.");
+    }
+}
+
 function playShuffle() {
     if (currentSongsList.length === 0) return;
-    // Seleccionamos un índice al azar de la lista actual
     const randomIndex = Math.floor(Math.random() * currentSongsList.length);
     playSongByIndex(randomIndex);
 }
@@ -290,23 +306,13 @@ uploadForm.addEventListener("submit", async (e) => {
     const userId = pb.authStore.model.id;
 
     try {
-        // VALIDACIÓN DE DUPLICADOS: Buscar si ya existe una canción con el mismo título y artista para este usuario
-        const existingSongs = await pb.collection('songsવાસ').getList(1, 1, {
-            filter: `uploaded_by = "${userId}" && title ~ "${titleInput}" && artist ~ "${artistInput}"`
-        });
-
-        // Nota: Ajustamos el nombre de la colección por seguridad abajo, asegurando que coincida con 'songs'
-    } catch(err) {}
-
-    // Validación limpia usando la lista actual o consulta directa
-    try {
         const checkDuplicate = await pb.collection('songs').getList(1, 1, {
             filter: `uploaded_by = "${userId}" && title = "${titleInput}" && artist = "${artistInput}"`
         });
 
         if (checkDuplicate.totalItems > 0) {
             alert(`Error: Ya tienes registrada la canción "${titleInput}" de "${artistInput}" en tu biblioteca.`);
-            return; // Detiene la subida si ya existe
+            return;
         }
 
         const formData = new FormData();
